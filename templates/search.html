@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Search Bibliography</h1>
+
+<div class="row mb-4">
+    <div class="col-md-8 mx-auto">
+        <form method="GET" action="{{ url_for('search') }}">
+            <div class="input-group">
+                <input type="text" class="form-control" name="q" placeholder="Search by title, author, citation key, or DOI..." value="{{ query }}">
+                <button class="btn btn-primary" type="submit">Search</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% if query %}
+    <h3>Results for "{{ query }}"</h3>
+    {% if entries %}
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>Citation Key</th>
+                        <th>Title</th>
+                        <th>Author</th>
+                        <th>Type</th>
+                        <th>Year</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                    <tr>
+                        <td><code>{{ entry.citation_key }}</code></td>
+                        <td>{{ entry.title[:80] }}{% if entry.title|length > 80 %}...{% endif %}</td>
+                        <td>{{ entry.author[:50] }}{% if entry.author|length > 50 %}...{% endif %}</td>
+                        <td>{{ entry.entry_type }}</td>
+                        <td>{{ entry.year }}</td>
+                        <td>
+                            <a href="{{ url_for('view_entry', entry_id=entry.id) }}" class="btn btn-sm btn-info">View</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            No entries found matching "{{ query }}"
+        </div>
+    {% endif %}
+{% endif %}
+{% endblock %}
