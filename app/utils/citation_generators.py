@@ -61,13 +61,19 @@ def generate_chicago(entry):
     citation = f"{author_str}. {entry.year}. "
 
     if entry.entry_type == 'article':
-        citation += f"\"{entry.title}.\" *{entry.journal *} {entry.volume}, no. {entry.number}: {entry.pages}."
+        citation += f"\"{entry.title}.\" *{entry.journal}* {entry.volume}, no. {entry.number}: {entry.pages}."
     elif entry.entry_type == 'book':
         citation += f"*{entry.title}*. {entry.publisher}."
+    elif entry.entry_type == 'inproceedings':
+        citation += f"\"{entry.title}.\" In *{entry.booktitle}*, edited by {entry.editor}, {entry.pages}. {entry.publisher}."
+    elif entry.entry_type == 'incollection':
+        citation += f"\"{entry.title}.\" In *{entry.booktitle}*, edited by {entry.editor}, {entry.pages}. {entry.publisher}."
+    elif entry.entry_type in ['phdthesis', 'mastersthesis']:
+        citation += f"\"{entry.title}.\" {entry.entry_type.replace('thesis', ' thesis').title()}, {entry.school}."
+    elif entry.entry_type == 'techreport':
+        citation += f"\"{entry.title}.\" Technical report, {entry.institution}."
     else:
-        citation += f"\"{entry.title}.\" "
-        if entry.booktitle:
-            citation += f"In *{entry.booktitle}*, edited by {entry.editor}, {entry.pages}. {entry.publisher}."
+        citation += f"\"{entry.title}.\""
 
     if entry.doi:
         citation += f" doi:{entry.doi}."
