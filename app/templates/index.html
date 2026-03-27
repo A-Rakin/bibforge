@@ -1,7 +1,33 @@
 {% extends "base.html" %}
 
 {% block content %}
-<h1 class="mb-4">Bibliography Entries</h1>
+<h1 class="mb-4">Bibliography Dashboard</h1>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="stat-card">
+            <h3>{{ stats.total }}</h3>
+            <p>Total Entries</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+            <h3>{{ stats.articles }}</h3>
+            <p>Articles</p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="stat-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+            <h3>{{ stats.books }}</h3>
+            <p>Books</p>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Recent Entries</h2>
+    <a href="{{ url_for('create_entry') }}" class="btn btn-primary">Create New Entry</a>
+</div>
 
 {% if entries %}
 <div class="table-responsive">
@@ -10,6 +36,7 @@
             <tr>
                 <th>Citation Key</th>
                 <th>Title</th>
+                <th>Author</th>
                 <th>Type</th>
                 <th>Year</th>
                 <th>Actions</th>
@@ -19,7 +46,8 @@
             {% for entry in entries %}
             <tr>
                 <td><code>{{ entry.citation_key }}</code></td>
-                <td>{{ entry.title[:50] }}{% if entry.title|length > 50 %}...{% endif %}</td>
+                <td>{{ entry.title[:80] }}{% if entry.title|length > 80 %}...{% endif %}</td>
+                <td>{{ entry.author[:50] }}{% if entry.author|length > 50 %}...{% endif %}</td>
                 <td>{{ entry.entry_type }}</td>
                 <td>{{ entry.year }}</td>
                 <td>
@@ -39,7 +67,7 @@
 
 <script>
 function deleteEntry(id) {
-    if (confirm('Are you sure you want to delete this entry?')) {
+    if (confirm('Are you sure you want to delete this entry? This action cannot be undone.')) {
         fetch(`/entry/${id}/delete`, {
             method: 'POST',
             headers: {
@@ -49,13 +77,17 @@ function deleteEntry(id) {
             if (response.redirected) {
                 window.location.href = response.url;
             }
+        }).catch(error => {
+            alert('Error deleting entry');
         });
     }
 }
 </script>
 {% else %}
-<div class="alert alert-info">
-    No bibliography entries yet. <a href="{{ url_for('create_entry') }}">Create your first entry</a>
+<div class="alert alert-info text-center">
+    <h4>No bibliography entries yet</h4>
+    <p>Get started by creating your first entry!</p>
+    <a href="{{ url_for('create_entry') }}" class="btn btn-primary">Create Entry</a>
 </div>
 {% endif %}
 {% endblock %}

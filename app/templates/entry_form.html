@@ -1,0 +1,425 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-{% if view_mode %}6{% else %}8{% endif %}">
+        <h1 class="mb-4">{% if view_mode %}View Entry{% elif entry %}Edit Entry{% else %}Create New Entry{% endif %}</h1>
+
+        <form method="POST" id="bibForm">
+            {{ form.hidden_tag() }}
+
+            <div class="mb-3">
+                <label for="entry_type" class="form-label">Entry Type</label>
+                <select class="form-select" id="entry_type" name="entry_type" {% if view_mode %}disabled{% endif %}>
+                    <option value="article" {% if form.entry_type.data == 'article' %}selected{% endif %}>Article</option>
+                    <option value="book" {% if form.entry_type.data == 'book' %}selected{% endif %}>Book</option>
+                    <option value="inproceedings" {% if form.entry_type.data == 'inproceedings' %}selected{% endif %}>Inproceedings</option>
+                    <option value="incollection" {% if form.entry_type.data == 'incollection' %}selected{% endif %}>Incollection</option>
+                    <option value="phdthesis" {% if form.entry_type.data == 'phdthesis' %}selected{% endif %}>PhD Thesis</option>
+                    <option value="mastersthesis" {% if form.entry_type.data == 'mastersthesis' %}selected{% endif %}>Master's Thesis</option>
+                    <option value="techreport" {% if form.entry_type.data == 'techreport' %}selected{% endif %}>Tech Report</option>
+                    <option value="unpublished" {% if form.entry_type.data == 'unpublished' %}selected{% endif %}>Unpublished</option>
+                </select>
+                <small class="text-muted">Select the type of publication</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="citation_key" class="form-label">Citation Key</label>
+                <input type="text" class="form-control" id="citation_key" name="citation_key"
+                       value="{{ form.citation_key.data or '' }}"
+                       placeholder="e.g., smith2023article"
+                       {% if view_mode %}readonly{% endif %}>
+                {% if form.citation_key.errors %}
+                    {% for error in form.citation_key.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+                <small class="text-muted">Unique identifier for this entry (letters, numbers, colon, underscore)</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="doi" class="form-label">DOI</label>
+                <div class="input-group">
+                    <input type="text" class="form-control" id="doi" name="doi"
+                           value="{{ form.doi.data or '' }}"
+                           placeholder="10.1234/example.2023.001"
+                           {% if view_mode %}readonly{% endif %}>
+                    {% if not view_mode %}
+                    <button type="button" class="btn btn-secondary" id="fetchDoiBtn">
+                        <span id="fetchDoiText">Fetch Metadata</span>
+                        <span id="fetchDoiSpinner" class="spinner-border spinner-border-sm" style="display: none;"></span>
+                    </button>
+                    {% endif %}
+                </div>
+                <small class="text-muted">Digital Object Identifier (optional - will auto-fill many fields)</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="title" class="form-label">Title</label>
+                <input type="text" class="form-control" id="title" name="title"
+                       value="{{ form.title.data or '' }}"
+                       placeholder="Full title of the work"
+                       {% if view_mode %}readonly{% endif %}>
+                {% if form.title.errors %}
+                    {% for error in form.title.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                <label for="author" class="form-label">Author(s)</label>
+                <input type="text" class="form-control" id="author" name="author"
+                       value="{{ form.author.data or '' }}"
+                       placeholder="e.g., Smith, J. and Johnson, M."
+                       {% if view_mode %}readonly{% endif %}>
+                {% if form.author.errors %}
+                    {% for error in form.author.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+                <small class="text-muted">Use 'and' between authors: Smith, J. and Johnson, M.</small>
+            </div>
+
+            <div class="mb-3">
+                <label for="year" class="form-label">Year</label>
+                <input type="number" class="form-control" id="year" name="year"
+                       value="{{ form.year.data or '' }}"
+                       placeholder="2023"
+                       {% if view_mode %}readonly{% endif %}>
+                {% if form.year.errors %}
+                    {% for error in form.year.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <!-- Article fields -->
+            <div id="article-fields" class="type-fields" style="display: none;">
+                <div class="mb-3">
+                    <label for="journal" class="form-label">Journal</label>
+                    <input type="text" class="form-control" id="journal" name="journal"
+                           value="{{ form.journal.data or '' }}"
+                           placeholder="Journal name"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <label for="volume" class="form-label">Volume</label>
+                        <input type="text" class="form-control" id="volume" name="volume"
+                               value="{{ form.volume.data or '' }}"
+                               placeholder="Volume"
+                               {% if view_mode %}readonly{% endif %}>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="number" class="form-label">Number</label>
+                        <input type="text" class="form-control" id="number" name="number"
+                               value="{{ form.number.data or '' }}"
+                               placeholder="Number/Issue"
+                               {% if view_mode %}readonly{% endif %}>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <label for="pages" class="form-label">Pages</label>
+                        <input type="text" class="form-control" id="pages" name="pages"
+                               value="{{ form.pages.data or '' }}"
+                               placeholder="Pages (e.g., 123-145)"
+                               {% if view_mode %}readonly{% endif %}>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Book fields -->
+            <div id="book-fields" class="type-fields" style="display: none;">
+                <div class="mb-3">
+                    <label for="publisher" class="form-label">Publisher</label>
+                    <input type="text" class="form-control" id="publisher" name="publisher"
+                           value="{{ form.publisher.data or '' }}"
+                           placeholder="Publisher name"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+                <div class="mb-3">
+                    <label for="address" class="form-label">Address</label>
+                    <input type="text" class="form-control" id="address" name="address"
+                           value="{{ form.address.data or '' }}"
+                           placeholder="Publisher location"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+                <div class="mb-3">
+                    <label for="edition" class="form-label">Edition</label>
+                    <input type="text" class="form-control" id="edition" name="edition"
+                           value="{{ form.edition.data or '' }}"
+                           placeholder="Edition (e.g., 2nd)"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+            </div>
+
+            <!-- Inproceedings/Incollection fields -->
+            <div id="proceedings-fields" class="type-fields" style="display: none;">
+                <div class="mb-3">
+                    <label for="booktitle" class="form-label">Book Title</label>
+                    <input type="text" class="form-control" id="booktitle" name="booktitle"
+                           value="{{ form.booktitle.data or '' }}"
+                           placeholder="Book/Conference title"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+                <div class="mb-3">
+                    <label for="editor" class="form-label">Editor(s)</label>
+                    <input type="text" class="form-control" id="editor" name="editor"
+                           value="{{ form.editor.data or '' }}"
+                           placeholder="Editor(s)"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+                <div class="mb-3">
+                    <label for="publisher" class="form-label">Publisher</label>
+                    <input type="text" class="form-control" id="publisher" name="publisher"
+                           value="{{ form.publisher.data or '' }}"
+                           placeholder="Publisher"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+                <div class="mb-3">
+                    <label for="pages" class="form-label">Pages</label>
+                    <input type="text" class="form-control" id="pages" name="pages"
+                           value="{{ form.pages.data or '' }}"
+                           placeholder="Pages"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+            </div>
+
+            <!-- Thesis fields -->
+            <div id="thesis-fields" class="type-fields" style="display: none;">
+                <div class="mb-3">
+                    <label for="school" class="form-label">School</label>
+                    <input type="text" class="form-control" id="school" name="school"
+                           value="{{ form.school.data or '' }}"
+                           placeholder="University/School name"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+                <div class="mb-3">
+                    <label for="address" class="form-label">Address</label>
+                    <input type="text" class="form-control" id="address" name="address"
+                           value="{{ form.address.data or '' }}"
+                           placeholder="Location"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+            </div>
+
+            <!-- Techreport fields -->
+            <div id="techreport-fields" class="type-fields" style="display: none;">
+                <div class="mb-3">
+                    <label for="institution" class="form-label">Institution</label>
+                    <input type="text" class="form-control" id="institution" name="institution"
+                           value="{{ form.institution.data or '' }}"
+                           placeholder="Institution name"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+                <div class="mb-3">
+                    <label for="report_type" class="form-label">Report Type</label>
+                    <input type="text" class="form-control" id="report_type" name="report_type"
+                           value="{{ form.report_type.data or '' }}"
+                           placeholder="Report type (e.g., Technical Report)"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+                <div class="mb-3">
+                    <label for="address" class="form-label">Address</label>
+                    <input type="text" class="form-control" id="address" name="address"
+                           value="{{ form.address.data or '' }}"
+                           placeholder="Location"
+                           {% if view_mode %}readonly{% endif %}>
+                </div>
+            </div>
+
+            <!-- Common optional fields -->
+            <div class="mb-3">
+                <label for="month" class="form-label">Month</label>
+                <input type="text" class="form-control" id="month" name="month"
+                       value="{{ form.month.data or '' }}"
+                       placeholder="January, February, etc."
+                       {% if view_mode %}readonly{% endif %}>
+            </div>
+
+            <div class="mb-3">
+                <label for="note" class="form-label">Note</label>
+                <textarea class="form-control" id="note" name="note" rows="3"
+                          placeholder="Additional notes or comments"
+                          {% if view_mode %}readonly{% endif %}>{{ form.note.data or '' }}</textarea>
+            </div>
+
+            <div class="mb-3">
+                <label for="url" class="form-label">URL</label>
+                <input type="text" class="form-control" id="url" name="url"
+                       value="{{ form.url.data or '' }}"
+                       placeholder="https://..."
+                       {% if view_mode %}readonly{% endif %}>
+            </div>
+
+            {% if not view_mode %}
+            <div class="mb-3">
+                <button type="submit" class="btn btn-primary" name="submit" value="Generate Entry">Generate Entry</button>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+            {% else %}
+            <div class="mb-3">
+                <a href="{{ url_for('edit_entry', entry_id=entry.id) }}" class="btn btn-warning">Edit</a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back to Dashboard</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if view_mode and citations %}
+    <div class="col-md-6">
+        <h2>Citations</h2>
+
+        <div class="card mb-3">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">MLA Style</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ citations.mla }}</p>
+                <button class="btn btn-sm btn-outline-primary copy-btn" data-text="{{ citations.mla }}">Copy MLA</button>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header bg-success text-white">
+                <h5 class="mb-0">APA Style</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ citations.apa }}</p>
+                <button class="btn btn-sm btn-outline-primary copy-btn" data-text="{{ citations.apa }}">Copy APA</button>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0">Chicago Style</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ citations.chicago }}</p>
+                <button class="btn btn-sm btn-outline-primary copy-btn" data-text="{{ citations.chicago }}">Copy Chicago</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header bg-dark text-white">
+                <h5 class="mb-0">BibTeX Entry</h5>
+            </div>
+            <div class="card-body">
+                <pre style="white-space: pre-wrap; word-wrap: break-word;"><code>{{ entry.to_bibtex() }}</code></pre>
+                <button class="btn btn-sm btn-outline-primary copy-btn" data-text="{{ entry.to_bibtex() }}">Copy BibTeX</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if not view_mode %}
+<script>
+$(document).ready(function() {
+    // Function to show/hide fields based on entry type
+    function updateFields() {
+        const entryType = $('#entry_type').val();
+
+        // Hide all type-specific fields
+        $('.type-fields').hide();
+
+        // Show fields based on entry type
+        if (entryType === 'article') {
+            $('#article-fields').show();
+        } else if (entryType === 'book') {
+            $('#book-fields').show();
+        } else if (entryType === 'inproceedings' || entryType === 'incollection') {
+            $('#proceedings-fields').show();
+        } else if (entryType === 'phdthesis' || entryType === 'mastersthesis') {
+            $('#thesis-fields').show();
+        } else if (entryType === 'techreport') {
+            $('#techreport-fields').show();
+        }
+    }
+
+    // Call on page load and when entry type changes
+    updateFields();
+    $('#entry_type').change(updateFields);
+
+    // DOI fetching functionality
+    $('#fetchDoiBtn').click(function() {
+        const doi = $('#doi').val().trim();
+
+        if (!doi) {
+            alert('Please enter a DOI first');
+            return;
+        }
+
+        // Show loading spinner
+        $('#fetchDoiText').hide();
+        $('#fetchDoiSpinner').show();
+        $('#fetchDoiBtn').prop('disabled', true);
+
+        $.ajax({
+            url: '/fetch-doi',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({doi: doi}),
+            success: function(data) {
+                if (data.title) $('#title').val(data.title);
+                if (data.author) $('#author').val(data.author);
+                if (data.year) $('#year').val(data.year);
+                if (data.journal) $('#journal').val(data.journal);
+                if (data.volume) $('#volume').val(data.volume);
+                if (data.number) $('#number').val(data.number);
+                if (data.pages) $('#pages').val(data.pages);
+                if (data.publisher) $('#publisher').val(data.publisher);
+
+                // Auto-generate citation key if empty
+                if (!$('#citation_key').val() && data.author && data.year) {
+                    const firstAuthor = data.author.split(' and ')[0].split(',')[0].toLowerCase();
+                    const citationKey = `${firstAuthor}${data.year}`;
+                    $('#citation_key').val(citationKey);
+                }
+
+                alert('Metadata fetched successfully!');
+            },
+            error: function(xhr) {
+                const errorMsg = xhr.responseJSON?.error || 'Error fetching DOI metadata';
+                alert(errorMsg);
+            },
+            complete: function() {
+                // Hide loading spinner
+                $('#fetchDoiText').show();
+                $('#fetchDoiSpinner').hide();
+                $('#fetchDoiBtn').prop('disabled', false);
+            }
+        });
+    });
+
+    // Copy to clipboard functionality
+    $('.copy-btn').click(function() {
+        const text = $(this).data('text');
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = $(this).text();
+            $(this).text('Copied!');
+            setTimeout(() => {
+                $(this).text(originalText);
+            }, 2000);
+        }).catch(() => {
+            alert('Failed to copy to clipboard');
+        });
+    });
+
+    // Auto-generate citation key from author and year
+    $('#title, #year, #author').on('input', function() {
+        if (!$('#citation_key').val()) {
+            const author = $('#author').val();
+            const year = $('#year').val();
+
+            if (author && year) {
+                const firstAuthor = author.split(' and ')[0].split(',')[0].toLowerCase();
+                const citationKey = `${firstAuthor}${year}`;
+                $('#citation_key').val(citationKey);
+            }
+        }
+    });
+});
+</script>
+{% endif %}
+{% endblock %}

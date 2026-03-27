@@ -19,7 +19,7 @@ class BibEntryForm(FlaskForm):
         DataRequired(),
         Regexp(r'^[a-zA-Z0-9_:]+$', message='Only letters, numbers, colon, and underscore allowed')
     ])
-    doi = StringField('DOI', validators=[Optional()])
+    doi = StringField('DOI', validators=[Optional(), URL()])
     title = StringField('Title', validators=[DataRequired()])
     author = StringField('Author(s)', validators=[DataRequired()])
     year = IntegerField('Year', validators=[DataRequired(), NumberRange(min=1000, max=2100)])

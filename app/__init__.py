@@ -12,7 +12,12 @@ def create_app():
     db.init_app(app)
 
     with app.app_context():
-        from app import routes, models
+        # Import models here to avoid circular imports
+        from app import models
         db.create_all()
+
+    # Import and register routes
+    from app.routes_init import init_routes
+    init_routes(app)
 
     return app
