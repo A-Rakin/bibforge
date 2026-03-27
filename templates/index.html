@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1 class="mb-4">Bibliography Entries</h1>
+
+{% if entries %}
+<div class="table-responsive">
+    <table class="table table-striped table-hover">
+        <thead>
+            <tr>
+                <th>Citation Key</th>
+                <th>Title</th>
+                <th>Type</th>
+                <th>Year</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entry in entries %}
+            <tr>
+                <td><code>{{ entry.citation_key }}</code></td>
+                <td>{{ entry.title[:50] }}{% if entry.title|length > 50 %}...{% endif %}</td>
+                <td>{{ entry.entry_type }}</td>
+                <td>{{ entry.year }}</td>
+                <td>
+                    <a href="{{ url_for('view_entry', entry_id=entry.id) }}" class="btn btn-sm btn-info">View</a>
+                    <a href="{{ url_for('edit_entry', entry_id=entry.id) }}" class="btn btn-sm btn-warning">Edit</a>
+                    <button class="btn btn-sm btn-danger" onclick="deleteEntry({{ entry.id }})">Delete</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<form id="deleteForm" method="POST" style="display: none;">
+    <input type="hidden" name="_method" value="DELETE">
+</form>
+
+<script>
+function deleteEntry(id) {
+    if (confirm('Are you sure you want to delete this entry?')) {
+        fetch(`/entry/${id}/delete`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(response => {
+            if (response.redirected) {
+                window.location.href = response.url;
+            }
+        });
+    }
+}
+</script>
+{% else %}
+<div class="alert alert-info">
+    No bibliography entries yet. <a href="{{ url_for('create_entry') }}">Create your first entry</a>
+</div>
+{% endif %}
+{% endblock %}

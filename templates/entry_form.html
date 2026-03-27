@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-{% if view_mode %}6{% else %}8{% endif %}">
+        <h1 class="mb-4">{% if view_mode %}View Entry{% elif entry %}Edit Entry{% else %}Create New Entry{% endif %}</h1>
+
+        <form method="POST" id="bibForm">
+            {{ form.hidden_tag() }}
+
+            <div class="mb-3">
+                {{ form.entry_type.label(class="form-label") }}
+                {{ form.entry_type(class="form-select", id="entryType") }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.citation_key.label(class="form-label") }}
+                {{ form.citation_key(class="form-control", readonly=view_mode) }}
+                {% if form.citation_key.errors %}
+                    {% for error in form.citation_key.errors %}
+                        <div class="text-danger">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+
+            <div class="mb-3">
+                {{ form.doi.label(class="form-label") }}
+                <div class="input-group">
+                    {{ form.doi(class="form-control", id="doi", readonly=view_mode) }}
+                    {% if not view_mode %}
+                    <button type="button" class="btn btn-secondary" id="fetchDoiBtn">Fetch Metadata</button>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                {{ form.title.label(class="form-label") }}
+                {{ form.title(class="form-control", readonly=view_mode) }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.author.label(class="form-label") }}
+                {{ form.author(class="form-control", readonly=view_mode) }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.year.label(class="form-label") }}
+                {{ form.year(class="form-control", readonly=view_mode) }}
+            </div>
+
+            <div id="dynamicFields">
+                <!-- Dynamic fields will be shown/hidden via JavaScript -->
+            </div>
+
+            <div class="mb-3">
+                {{ form.month.label(class="form-label") }}
+                {{ form.month(class="form-control", readonly=view_mode) }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.note.label(class="form-label") }}
+                {{ form.note(class="form-control", rows=3, readonly=view_mode) }}
+            </div>
+
+            <div class="mb-3">
+                {{ form.url.label(class="form-label") }}
+                {{ form.url(class="form-control", readonly=view_mode) }}
+            </div>
+
+            {% if not view_mode %}
+            <div class="mb-3">
+                {{ form.submit(class="btn btn-primary") }}
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+            {% else %}
+            <div class="mb-3">
+                <a href="{{ url_for('edit_entry', entry_id=entry.id) }}" class="btn btn-warning">Edit</a>
+                <a href="{{ url_for('index') }}" class="btn btn-secondary">Back</a>
+            </div>
+            {% endif %}
+        </form>
+    </div>
+
+    {% if view_mode and citations %}
+    <div class="col-md-6">
+        <h2>Citations</h2>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>MLA</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ citations.mla }}</p>
+                <button class="btn btn-sm btn-outline-primary copy-btn" data-text="{{ citations.mla }}">Copy</button>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>APA</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ citations.apa }}</p>
+                <button class="btn btn-sm btn-outline-primary copy-btn" data-text="{{ citations.apa }}">Copy</button>
+            </div>
+        </div>
+
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5>Chicago</h5>
+            </div>
+            <div class="card-body">
+                <p>{{ citations.chicago }}</p>
+                <button class="btn btn-sm btn-outline-primary copy-btn" data-text="{{ citations.chicago }}">Copy</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5>BibTeX</h5>
+            </div>
+            <div class="card-body">
+                <pre><code>{{ entry.to_bibtex() }}</code></pre>
+                <button class="btn btn-sm btn-outline-primary copy-btn" data-text="{{ entry.to_bibtex() }}">Copy BibTeX</button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+{% if not view_mode %}
+<script>
+$(document).ready(function() {
+    // Dynamic field management
+    const fieldGroups = {
+        'article': ['journal', 'volume', 'number', 'pages'],
+        'book': ['publisher', 'address', 'edition'],
+        'inproceedings': ['booktitle', 'editor', 'pages', 'publisher'],
+        'incollection': ['booktitle', 'editor', 'pages', 'publisher'],
+        'phdthesis': ['school', 'address'],
+        'mastersthesis': ['school', 'address'],
+        'techreport': ['institution', 'report_type', 'address'],
+        'unpublished': ['note']
+    };
+
+    function updateDynamicFields() {
+        const type = $('#entryType').val();
+        const fieldsToShow = fieldGroups[type] || [];
+
+        $('.dynamic-field').remove();
+
+        fieldsToShow.forEach(field => {
+            const fieldElement = $(`#${field}`).closest('.mb-3');
+            if (fieldElement.length) {
+                fieldElement.addClass('dynamic-field').show();
+            } else {
+                // Create field if it doesn't exist
+                const label = $(`label[for="${field}"]`).text() || field;
+                const input = $(`<input type="text" class="form-control" id="${field}" name="${field}">`);
+                const wrapper = $(`<div class="mb-3 dynamic-field"><label class="form-label">${label}</label></div>`);
+                wrapper.append(input);
+                $('#dynamicFields').append(wrapper);
+            }
+        });
+    }
+
+    $('#entryType').change(updateDynamicFields);
+    updateDynamicFields();
+
+    // DOI fetching
+    $('#fetchDoiBtn').click(function() {
+        const doi = $('#doi').val();
+        if (!doi) {
+            alert('Please enter a DOI first');
+            return;
+        }
+
+        $.ajax({
+            url: '/fetch-doi',
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({doi: doi}),
+            success: function(data) {
+                if (data.title) $('#title').val(data.title);
+                if (data.author) $('#author').val(data.author);
+                if (data.year) $('#year').val(data.year);
+                if (data.journal) $('#journal').val(data.journal);
+                if (data.volume) $('#volume').val(data.volume);
+                if (data.number) $('#number').val(data.number);
+                if (data.pages) $('#pages').val(data.pages);
+                if (data.publisher) $('#publisher').val(data.publisher);
+                alert('Metadata fetched successfully!');
+            },
+            error: function(xhr) {
+                alert(xhr.responseJSON.error || 'Error fetching DOI metadata');
+            }
+        });
+    });
+});
+
+// Copy to clipboard functionality
+document.querySelectorAll('.copy-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const text = this.dataset.text;
+        navigator.clipboard.writeText(text).then(() => {
+            const originalText = this.textContent;
+            this.textContent = 'Copied!';
+            setTimeout(() => {
+                this.textContent = originalText;
+            }, 2000);
+        });
+    });
+});
+</script>
+{% endif %}
+{% endblock %}
